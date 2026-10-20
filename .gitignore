@@ -1,7 +1,5 @@
 node_modules
 dist
-*.tsbuildinfo
+.firebase
+*.log
 .env
-.env.local
-.env.*.local
-.vercel

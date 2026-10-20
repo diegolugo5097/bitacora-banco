@@ -1,0 +1,29 @@
+rules_version = '2';
+
+// Reglas para la Bitácora de Avances.
+// Si tu proyecto ya tiene reglas para otra app, NO reemplaces las tuyas:
+// copia solo los dos bloques "match" de abajo dentro de tu "match /databases/{database}/documents".
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /parentTasks/{taskId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.name is string
+                            && request.resource.data.name.size() > 0
+                            && request.resource.data.name.size() <= 120;
+      allow delete: if true;
+    }
+
+    match /childTasks/{taskId} {
+      allow read: if true;
+      allow create, update: if request.resource.data.name is string
+                            && request.resource.data.name.size() > 0
+                            && request.resource.data.name.size() <= 120
+                            && request.resource.data.parentId is string
+                            && request.resource.data.progress is number
+                            && request.resource.data.progress >= 0
+                            && request.resource.data.progress <= 100;
+      allow delete: if true;
+    }
+  }
+}
