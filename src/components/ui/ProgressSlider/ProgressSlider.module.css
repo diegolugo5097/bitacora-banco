@@ -1,0 +1,19 @@
+.slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.slider input {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: var(--brand);
+}
+
+.slider output {
+  min-width: 44px;
+  text-align: right;
+  font-family: var(--font-mono);
+  font-weight: 800;
+}

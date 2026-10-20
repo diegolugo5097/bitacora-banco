@@ -1,0 +1,21 @@
+.chip {
+  padding: 3px 10px;
+  font: 700 11px var(--font-body);
+  white-space: nowrap;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+}
+
+.completed {
+  color: var(--ok);
+}
+
+.inProgress {
+  color: var(--on-brand);
+  background: var(--brand);
+  border-color: var(--brand);
+}
+
+.notStarted {
+  color: var(--idle);
+}
