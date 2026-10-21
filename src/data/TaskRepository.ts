@@ -23,4 +23,10 @@ export interface TaskRepository {
   createChild(task: ChildTask): Promise<void>;
   updateChild(id: string, patch: ChildTaskPatch): Promise<void>;
   deleteChild(id: string): Promise<void>;
+
+  /**
+   * Sube un lote de tareas conservando sus ids. Si una tarea ya existe se reemplaza,
+   * así que repetir la importación no crea duplicados.
+   */
+  importSnapshot(snapshot: TaskSnapshot): Promise<void>;
 }

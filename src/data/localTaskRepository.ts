@@ -1,24 +1,12 @@
 import type { TaskSnapshot } from '@/domain/task.types';
+import { LOCAL_STORAGE_KEY, readLocalSnapshot, writeLocalSnapshot } from './localTaskStorage';
 import type { ChildTaskPatch, ParentTaskPatch, TaskRepository } from './TaskRepository';
 
-const STORAGE_KEY = 'bitacora-avances';
-const EMPTY_SNAPSHOT: TaskSnapshot = { parents: [], children: [] };
-
-function readStorage(): TaskSnapshot {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as TaskSnapshot) : EMPTY_SNAPSHOT;
-  } catch {
-    return EMPTY_SNAPSHOT;
-  }
-}
-
-function writeStorage(snapshot: TaskSnapshot): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
-  } catch {
-    // Almacenamiento lleno o bloqueado: los datos siguen en memoria durante la sesión.
-  }
+/** Agrega o reemplaza por id, para que importar dos veces no duplique tareas. */
+function upsertById<T extends { id: string }>(current: T[], incoming: T[]): T[] {
+  const byId = new Map(current.map((item) => [item.id, item]));
+  incoming.forEach((item) => byId.set(item.id, item));
+  return [...byId.values()];
 }
 
 /**
@@ -26,20 +14,20 @@ function writeStorage(snapshot: TaskSnapshot): void {
  * navegador se sincronizan con el evento `storage`.
  */
 export function createLocalTaskRepository(): TaskRepository {
-  let snapshot = readStorage();
+  let snapshot = readLocalSnapshot();
   const listeners = new Set<(snapshot: TaskSnapshot) => void>();
 
   const notify = () => listeners.forEach((listener) => listener(snapshot));
 
   const commit = (next: TaskSnapshot) => {
     snapshot = next;
-    writeStorage(snapshot);
+    writeLocalSnapshot(snapshot);
     notify();
   };
 
   const onStorage = (event: StorageEvent) => {
-    if (event.key !== STORAGE_KEY) return;
-    snapshot = readStorage();
+    if (event.key !== LOCAL_STORAGE_KEY) return;
+    snapshot = readLocalSnapshot();
     notify();
   };
 
@@ -87,6 +75,13 @@ export function createLocalTaskRepository(): TaskRepository {
 
     async deleteChild(id) {
       commit({ ...snapshot, children: snapshot.children.filter((child) => child.id !== id) });
+    },
+
+    async importSnapshot(incoming) {
+      commit({
+        parents: upsertById(snapshot.parents, incoming.parents),
+        children: upsertById(snapshot.children, incoming.children),
+      });
     },
   };
 }

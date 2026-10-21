@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { AppHeader } from '@/components/AppHeader/AppHeader';
 import { GanttChart } from '@/components/GanttChart/GanttChart';
+import { LocalImportBanner } from '@/components/LocalImportBanner/LocalImportBanner';
 import { SummaryBar } from '@/components/SummaryBar/SummaryBar';
 import { TaskForm, type EditTarget, type TaskFormSubmit } from '@/components/TaskForm/TaskForm';
 import { TaskList } from '@/components/TaskList/TaskList';
 import { Toast } from '@/components/ui/Toast/Toast';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useLocalImport } from '@/hooks/useLocalImport';
 import { useTasks } from '@/hooks/useTasks';
 import { useToast } from '@/hooks/useToast';
 import styles from './App.module.css';
@@ -14,6 +16,7 @@ export default function App() {
   const { userName, setUserName } = useCurrentUser();
   const tasks = useTasks(userName);
   const { toastMessage, showToast } = useToast();
+  const localImport = useLocalImport();
   const [editTarget, setEditTarget] = useState<EditTarget | null>(null);
   const [collapsedParents, setCollapsedParents] = useState<Set<string>>(new Set());
 
@@ -88,6 +91,16 @@ export default function App() {
         canExport={tasks.tree.length > 0}
         onExport={exportToExcel}
       />
+
+      {localImport.isVisible && (
+        <LocalImportBanner
+          parentCount={localImport.parentCount}
+          childCount={localImport.childCount}
+          isImporting={localImport.isImporting}
+          onImport={() => run(localImport.importLocalTasks, 'Tareas pasadas a la lista compartida')}
+          onDismiss={localImport.dismiss}
+        />
+      )}
 
       <SummaryBar summary={tasks.summary} />
 

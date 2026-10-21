@@ -19,6 +19,14 @@ import type { TaskRepository } from './TaskRepository';
 
 const PARENTS = 'parentTasks';
 const CHILDREN = 'childTasks';
+/** Firestore permite hasta 500 escrituras por lote. */
+const BATCH_LIMIT = 450;
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) chunks.push(items.slice(index, index + size));
+  return chunks;
+}
 
 function toRows<T>(snapshot: QuerySnapshot<DocumentData>): T[] {
   return snapshot.docs.map((document) => ({ id: document.id, ...document.data() }) as T);
@@ -87,5 +95,19 @@ export function createFirestoreTaskRepository(options: FirebaseOptions): TaskRep
     createChild: (task) => setDoc(doc(childrenRef, task.id), withoutId(task)),
     updateChild: (id, patch) => updateDoc(doc(childrenRef, id), patch),
     deleteChild: (id) => deleteDoc(doc(childrenRef, id)),
+
+    /** Primero las padres y luego las hijas, para que nunca quede una hija sin su padre. */
+    async importSnapshot({ parents, children }) {
+      const writes = [
+        ...parents.map((task) => ({ ref: doc(parentsRef, task.id), data: withoutId(task) })),
+        ...children.map((task) => ({ ref: doc(childrenRef, task.id), data: withoutId(task) })),
+      ];
+
+      for (const group of chunk(writes, BATCH_LIMIT)) {
+        const batch = writeBatch(db);
+        group.forEach(({ ref, data }) => batch.set(ref, data));
+        await batch.commit();
+      }
+    },
   };
 }
