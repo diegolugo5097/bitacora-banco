@@ -12,8 +12,8 @@ export interface GanttRowData {
   startDate: IsoDate;
   endDate: IsoDate;
   progress: number;
-  /** Sigue abierta: la barra llega hasta hoy. */
-  isOpen: boolean;
+  /** Solo hijas no cumplidas: hasta dónde llegó el retraso después de la fecha final. */
+  overrunEnd: IsoDate | null;
 }
 
 export interface GanttTick {
@@ -32,23 +32,39 @@ export interface GanttScale {
   todayPercent: number | null;
 }
 
+/** La barra de la padre ya incluye los retrasos de sus hijas; solo las hijas dibujan el tramo rojo. */
 export function flattenTree(tree: ParentTaskNode[]): GanttRowData[] {
-  return tree.flatMap((parent) => [toRow(parent, 'parent'), ...parent.children.map((child) => toRow(child, 'child'))]);
+  return tree.flatMap((parent) => [
+    { ...pickRow(parent), kind: 'parent' as const, overrunEnd: null },
+    ...parent.children.map((child) => ({ ...pickRow(child), kind: 'child' as const, overrunEnd: child.overrunEnd })),
+  ]);
 }
 
-function toRow(task: Omit<GanttRowData, 'kind'>, kind: GanttRowData['kind']): GanttRowData {
-  const { id, name, startDate, endDate, progress, isOpen } = task;
-  return { id, name, kind, startDate, endDate, progress, isOpen };
+function pickRow({ id, name, startDate, endDate, progress }: Omit<GanttRowData, 'kind' | 'overrunEnd'>) {
+  return { id, name, startDate, endDate, progress };
 }
 
-/** Marca el primer día de cada mes y cada lunes. */
+/** Último día que ocupa una fila, contando el retraso. */
+export const rowEnd = (row: GanttRowData): IsoDate => row.overrunEnd ?? row.endDate;
+
+/** Días mínimos entre un lunes y el inicio de mes para que sus etiquetas no se monten. */
+const MIN_TICK_GAP_DAYS = 4;
+
+function isNearMonthStart(date: Date): boolean {
+  const daysInMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  const daysSinceStart = date.getDate() - 1;
+  const daysUntilNext = daysInMonth - date.getDate() + 1;
+  return daysSinceStart < MIN_TICK_GAP_DAYS || daysUntilNext < MIN_TICK_GAP_DAYS;
+}
+
+/** Marca el primer día de cada mes y los lunes que no queden pegados a él. */
 function buildTicks(start: Date, totalDays: number): GanttTick[] {
   const ticks: GanttTick[] = [];
   for (let dayIndex = 0; dayIndex < totalDays; dayIndex++) {
     const date = new Date(start.getTime() + dayIndex * DAY_MS);
     if (date.getDate() === 1) {
       ticks.push({ dayIndex, label: `${monthLabel(date)} ${date.getFullYear()}`, isMonthStart: true });
-    } else if (date.getDay() === 1) {
+    } else if (date.getDay() === 1 && !isNearMonthStart(date)) {
       ticks.push({ dayIndex, label: `${date.getDate()} ${monthLabel(date)}`, isMonthStart: false });
     }
   }
@@ -57,7 +73,7 @@ function buildTicks(start: Date, totalDays: number): GanttTick[] {
 
 export function buildGanttScale(rows: GanttRowData[]): GanttScale {
   const earliest = rows.reduce((date, row) => minDate(date, row.startDate), rows[0].startDate);
-  const latest = rows.reduce((date, row) => maxDate(date, row.endDate), rows[0].endDate);
+  const latest = rows.reduce((date, row) => maxDate(date, rowEnd(row)), rowEnd(rows[0]));
 
   const start = new Date(parseIsoDate(earliest).getTime() - PADDING_BEFORE_DAYS * DAY_MS);
   const end = new Date(parseIsoDate(latest).getTime() + PADDING_AFTER_DAYS * DAY_MS);

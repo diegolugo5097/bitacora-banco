@@ -1,4 +1,4 @@
-import type { ChildTask, ParentTask, TaskSnapshot } from '@/domain/task.types';
+import type { ChildTask, IsoDate, ParentTask, TaskSnapshot } from '@/domain/task.types';
 
 const STORAGE_KEY = 'bitacora-avances';
 /** Copia de seguridad que queda en el navegador después de importar. */
@@ -7,46 +7,68 @@ const BACKUP_KEY = 'bitacora-avances:respaldo';
 export const LOCAL_STORAGE_KEY = STORAGE_KEY;
 
 const EMPTY_SNAPSHOT: TaskSnapshot = { parents: [], children: [] };
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 type RawRecord = Record<string, unknown>;
 
 const asString = (value: unknown, fallback = ''): string => (typeof value === 'string' ? value : fallback);
 const asOptionalString = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined);
+const asIsoDate = (value: unknown): IsoDate | undefined =>
+  typeof value === 'string' && ISO_DATE.test(value) ? value : undefined;
 
 function clampProgress(value: unknown): number {
   const number = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(number) ? Math.min(100, Math.max(0, Math.round(number))) : 0;
 }
 
-/** Firestore no acepta `undefined`: solo se incluyen los campos de auditoría que existen. */
-function auditFields(raw: RawRecord) {
-  const createdAt = asString(raw.createdAt, new Date().toISOString());
-  const updatedAt = asOptionalString(raw.updatedAt);
-  const updatedBy = asOptionalString(raw.updatedBy);
-  return { createdAt, ...(updatedAt ? { updatedAt } : {}), ...(updatedBy ? { updatedBy } : {}) };
+/** Firestore no acepta `undefined`: solo se incluyen los campos opcionales que existen. */
+function optional<K extends string, V>(key: K, value: V | undefined): Partial<Record<K, V>> {
+  return value === undefined || value === '' ? {} : ({ [key]: value } as Record<K, V>);
 }
 
-function toParent(raw: RawRecord): ParentTask | null {
+/** Campos comunes a padres e hijas. */
+function baseFields(raw: RawRecord) {
   const id = asString(raw.id);
   const name = asString(raw.name).trim();
   if (!id || !name) return null;
-  return { id, name, description: asString(raw.description), ...auditFields(raw) };
+
+  return {
+    id,
+    name,
+    description: asString(raw.description),
+    createdAt: asString(raw.createdAt, new Date().toISOString()),
+    ...optional('updatedAt', asOptionalString(raw.updatedAt)),
+    ...optional('updatedBy', asOptionalString(raw.updatedBy)),
+  };
+}
+
+function toParent(raw: RawRecord): ParentTask | null {
+  const base = baseFields(raw);
+  return base ? { ...base, ...optional('startDate', asIsoDate(raw.startDate)) } : null;
 }
 
 /**
- * Las versiones anteriores no guardaban `completedAt` (tenían fechas manuales).
- * Si la tarea ya estaba al 100 %, se toma su última actualización como fecha de cierre.
+ * Acepta formatos de versiones anteriores:
+ * - Las que tenían fechas manuales guardaban la fecha final en `endDate`.
+ * - Las que no guardaban `completedAt` toman su última actualización como cierre si estaban al 100 %.
  */
 function toChild(raw: RawRecord): ChildTask | null {
-  const parent = toParent(raw);
+  const base = baseFields(raw);
   const parentId = asString(raw.parentId);
-  if (!parent || !parentId) return null;
+  if (!base || !parentId) return null;
 
   const progress = clampProgress(raw.progress);
   const savedCompletion = asOptionalString(raw.completedAt);
-  const completedAt = progress >= 100 ? savedCompletion ?? parent.updatedAt ?? parent.createdAt : null;
+  const completedAt = progress >= 100 ? (savedCompletion ?? base.updatedAt ?? base.createdAt) : null;
 
-  return { ...parent, parentId, progress, completedAt };
+  return {
+    ...base,
+    parentId,
+    progress,
+    completedAt,
+    ...optional('dueDate', asIsoDate(raw.dueDate) ?? asIsoDate(raw.endDate)),
+    ...optional('justification', asOptionalString(raw.justification)),
+  };
 }
 
 const isRecord = (value: unknown): value is RawRecord => typeof value === 'object' && value !== null;

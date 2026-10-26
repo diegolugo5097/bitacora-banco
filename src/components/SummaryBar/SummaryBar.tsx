@@ -7,10 +7,10 @@ interface Props {
 
 export function SummaryBar({ summary }: Props) {
   const metrics = [
-    { label: 'Avance general', value: `${summary.overallProgress}%` },
-    { label: 'Tareas padre', value: String(summary.parentCount) },
-    { label: 'Hijas completadas', value: `${summary.completedChildren}/${summary.childCount}` },
-    { label: 'Hijas sin iniciar', value: String(summary.notStartedChildren) },
+    { label: 'Avance general', value: `${summary.overallProgress}%`, alert: false },
+    { label: 'Tareas padre', value: String(summary.parentCount), alert: false },
+    { label: 'Hijas completadas', value: `${summary.completedChildren}/${summary.childCount}`, alert: false },
+    { label: 'Hijas no cumplidas', value: String(summary.unmetChildren), alert: summary.unmetChildren > 0 },
   ];
 
   return (
@@ -18,7 +18,7 @@ export function SummaryBar({ summary }: Props) {
       {metrics.map((metric) => (
         <div key={metric.label} className={styles.metric}>
           <dt className="eyebrow">{metric.label}</dt>
-          <dd>{metric.value}</dd>
+          <dd className={metric.alert ? styles.alert : undefined}>{metric.value}</dd>
         </div>
       ))}
     </dl>

@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
+import { ComplianceChip } from '@/components/ui/ComplianceChip/ComplianceChip';
 import { ProgressSlider } from '@/components/ui/ProgressSlider/ProgressSlider';
 import { RowActions } from '@/components/ui/RowActions/RowActions';
-import { StatusChip } from '@/components/ui/StatusChip/StatusChip';
-import { TaskDates } from '@/components/ui/TaskDates/TaskDates';
 import { UpdatedBy } from '@/components/ui/UpdatedBy/UpdatedBy';
-import { getTaskStatus } from '@/domain/progress';
+import { dateOf } from '@/domain/progress';
 import type { ChildTaskNode } from '@/domain/task.types';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
+import { formatShortDate } from '@/utils/date';
+import { JustificationField } from './JustificationField';
 import styles from './TaskList.module.css';
 
 /** Espera tras mover el control antes de guardar, para no escribir en cada paso. */
@@ -17,11 +18,19 @@ interface Props {
   onEdit: () => void;
   onDelete: () => void;
   onProgressChange: (progress: number) => void;
+  onJustificationChange: (text: string) => void;
 }
 
-export function ChildTaskRow({ task, onEdit, onDelete, onProgressChange }: Props) {
+function dueDateLabel(task: ChildTaskNode): string {
+  if (!task.dueDate) return 'Sin fecha final';
+  const due = `Fecha final ${formatShortDate(task.dueDate)}`;
+  return task.completedAt ? `${due} · terminada el ${formatShortDate(dateOf(task.completedAt))}` : due;
+}
+
+export function ChildTaskRow({ task, onEdit, onDelete, onProgressChange, onJustificationChange }: Props) {
   const [draftProgress, setDraftProgress] = useState(task.progress);
   const isDragging = useRef(false);
+  const isUnmet = task.compliance === 'unmet';
 
   const saveProgress = useDebouncedCallback((progress: number) => {
     isDragging.current = false;
@@ -40,13 +49,13 @@ export function ChildTaskRow({ task, onEdit, onDelete, onProgressChange }: Props
   }
 
   return (
-    <div className={styles.child}>
+    <div className={`${styles.child} ${isUnmet ? styles.unmet : ''}`}>
       <div className={styles.body}>
         <div className={styles.childName}>{task.name}</div>
         {task.description && <div className={styles.description}>{task.description}</div>}
         <div className={styles.meta}>
-          <TaskDates startDate={task.startDate} endDate={task.endDate} isOpen={task.isOpen} />
-          <StatusChip status={getTaskStatus(draftProgress)} />
+          {dueDateLabel(task)}
+          <ComplianceChip status={task.compliance} />
         </div>
         <UpdatedBy updatedAt={task.updatedAt} updatedBy={task.updatedBy} />
       </div>
@@ -59,6 +68,10 @@ export function ChildTaskRow({ task, onEdit, onDelete, onProgressChange }: Props
       />
 
       <RowActions onEdit={onEdit} onDelete={onDelete} confirmMessage="¿Eliminar?" />
+
+      {isUnmet && (
+        <JustificationField taskId={task.id} value={task.justification ?? ''} onSave={onJustificationChange} />
+      )}
     </div>
   );
 }

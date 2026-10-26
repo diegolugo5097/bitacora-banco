@@ -42,7 +42,11 @@ export function GanttChart({ tree }: Props) {
             <div className={styles.labels}>
               <div className={`${styles.labelHeader} eyebrow`}>Tarea</div>
               {rows.map((row) => (
-                <div key={row.id} className={`${styles.label} ${styles[row.kind]}`} title={row.name}>
+                <div
+                  key={row.id}
+                  className={`${styles.label} ${styles[row.kind]} ${row.overrunEnd ? styles.unmet : ''}`}
+                  title={row.overrunEnd ? `${row.name} (no cumplida)` : row.name}
+                >
                   {row.name}
                 </div>
               ))}

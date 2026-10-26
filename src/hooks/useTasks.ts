@@ -12,13 +12,13 @@ function auditStamp(userName: string) {
   return { updatedAt: new Date().toISOString(), ...(name ? { updatedBy: name } : {}) };
 }
 
-function draftFields(draft: TaskDraft) {
+function textFields(draft: TaskDraft) {
   return { name: draft.name.trim(), description: draft.description.trim() };
 }
 
 /**
  * Conserva la fecha de cierre original si la tarea ya estaba completa,
- * para que volver a guardarla no mueva su fin en el Gantt.
+ * para que volver a guardarla no cambie si se cumplió o no.
  */
 function nextCompletion(current: ChildTaskNode | undefined, progress: number): string | null {
   if (current?.completedAt && progress >= 100) return current.completedAt;
@@ -53,7 +53,8 @@ export function useTasks(userName: string) {
       const task: ParentTask = {
         id: createId(),
         createdAt: new Date().toISOString(),
-        ...draftFields(draft),
+        startDate: draft.startDate,
+        ...textFields(draft),
         ...auditStamp(userName),
       };
       return repository.createParent(task).then(() => task);
@@ -67,9 +68,10 @@ export function useTasks(userName: string) {
         id: createId(),
         parentId,
         createdAt: new Date().toISOString(),
+        dueDate: draft.dueDate,
         progress: draft.progress,
         completedAt: completionTimestamp(draft.progress),
-        ...draftFields(draft),
+        ...textFields(draft),
         ...auditStamp(userName),
       };
       return repository.createChild(task).then(() => task);
@@ -78,14 +80,16 @@ export function useTasks(userName: string) {
   );
 
   const updateParent = useCallback(
-    (id: string, draft: TaskDraft) => repository.updateParent(id, { ...draftFields(draft), ...auditStamp(userName) }),
+    (id: string, draft: TaskDraft) =>
+      repository.updateParent(id, { ...textFields(draft), startDate: draft.startDate, ...auditStamp(userName) }),
     [repository, userName],
   );
 
   const updateChild = useCallback(
     (id: string, draft: TaskDraft) =>
       repository.updateChild(id, {
-        ...draftFields(draft),
+        ...textFields(draft),
+        dueDate: draft.dueDate,
         progress: draft.progress,
         completedAt: nextCompletion(findChild(id), draft.progress),
         ...auditStamp(userName),
@@ -103,6 +107,12 @@ export function useTasks(userName: string) {
     [repository, userName, findChild],
   );
 
+  const updateChildJustification = useCallback(
+    (id: string, justification: string) =>
+      repository.updateChild(id, { justification: justification.trim(), ...auditStamp(userName) }),
+    [repository, userName],
+  );
+
   return {
     tree,
     summary,
@@ -113,6 +123,7 @@ export function useTasks(userName: string) {
     updateParent,
     updateChild,
     updateChildProgress,
+    updateChildJustification,
     deleteParent: repository.deleteParent,
     deleteChild: repository.deleteChild,
   };

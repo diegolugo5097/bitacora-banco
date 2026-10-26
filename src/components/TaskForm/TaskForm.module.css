@@ -48,6 +48,11 @@
   cursor: not-allowed;
 }
 
+.hint {
+  font-weight: 400;
+  color: var(--muted);
+}
+
 .note {
   margin: 0;
   font-size: 12px;

@@ -14,6 +14,7 @@ interface Props {
   onEditChild: (task: ChildTaskNode) => void;
   onDeleteChild: (childId: string) => void;
   onChildProgressChange: (childId: string, progress: number) => void;
+  onChildJustificationChange: (childId: string, text: string) => void;
 }
 
 export function TaskList({ tree, status, collapsedParents, onToggleParent, ...handlers }: Props) {

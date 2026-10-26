@@ -100,12 +100,14 @@
   pointer-events: none;
 }
 
+/* "Hoy" va en el color del texto: el rojo queda reservado para lo no cumplido */
 .today {
   position: absolute;
   top: 0;
   bottom: 0;
   z-index: 1;
-  border-left: 2px dashed var(--bad);
+  border-left: 2px dashed var(--strong);
+  opacity: 0.7;
   pointer-events: none;
 }
 
@@ -119,26 +121,24 @@
   background: color-mix(in srgb, var(--bg) 60%, transparent);
 }
 
+/* Barra planeada: contorno y relleno en el color de su avance (gris → verde) */
 .bar {
   position: absolute;
   top: 8px;
   height: 18px;
   overflow: hidden;
-  background: var(--brand-soft);
-  border: 1px solid var(--strong);
+  background: color-mix(in srgb, var(--progress-color) 16%, transparent);
+  border: 1px solid var(--progress-color);
   border-radius: 4px;
 }
 
 .row.child .bar {
   top: 10px;
   height: 14px;
-  background: color-mix(in srgb, var(--child) 22%, transparent);
-  border-color: var(--child);
 }
 
-/* Tarea abierta: borde final punteado, porque su fin todavía no existe */
-.bar.open {
-  border-right-style: dashed;
+.row.unmet .bar {
+  border-color: var(--bad);
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
@@ -146,12 +146,21 @@
 .barFill {
   position: absolute;
   inset: 0 auto 0 0;
-  background: var(--brand);
-  transition: width 0.3s;
+  background: var(--progress-color);
+  transition:
+    width 0.3s,
+    background-color 0.3s;
 }
 
-.row.child .barFill {
-  background: var(--child);
+/* Tramo de retraso: de la fecha final hasta el cierre real u hoy */
+.overrun {
+  position: absolute;
+  top: 10px;
+  height: 14px;
+  background: repeating-linear-gradient(-45deg, var(--bad) 0 3px, var(--bad-soft) 3px 7px);
+  border: 1px solid var(--bad);
+  border-left: 0;
+  border-radius: 0 4px 4px 0;
 }
 
 .barLabel {
@@ -166,6 +175,15 @@
 .row.child .barLabel {
   font-weight: 600;
   color: var(--muted);
+}
+
+.row.unmet .barLabel {
+  color: var(--bad);
+}
+
+.label.unmet {
+  color: var(--bad);
+  box-shadow: inset 4px 0 0 var(--bad);
 }
 
 .legend {
@@ -189,16 +207,18 @@
   border-radius: 2px;
 }
 
-.swatchParent {
-  background: var(--brand);
+.swatchProgress {
+  width: 48px;
+  background: linear-gradient(90deg, var(--progress-empty), var(--progress-full));
 }
 
-.swatchChild {
-  background: var(--child);
+.swatchOverrun {
+  background: repeating-linear-gradient(-45deg, var(--bad) 0 3px, var(--bad-soft) 3px 7px);
+  border: 1px solid var(--bad);
 }
 
 .swatchToday {
   display: inline-block;
   height: 12px;
-  border-left: 2px dashed var(--bad);
+  border-left: 2px dashed var(--strong);
 }

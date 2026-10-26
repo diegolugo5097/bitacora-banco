@@ -1,6 +1,6 @@
-import type { ChildTaskNode, ParentTaskNode, TaskDraft } from '@/domain/task.types';
+import type { ChildTaskNode, ParentTaskNode, TaskDraft, TaskKind } from '@/domain/task.types';
 
-export type TaskKind = 'parent' | 'child';
+export type { TaskKind } from '@/domain/task.types';
 
 export type EditTarget = { kind: 'parent'; task: ParentTaskNode } | { kind: 'child'; task: ChildTaskNode };
 

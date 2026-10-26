@@ -9,7 +9,9 @@
 .fill {
   display: block;
   height: 100%;
-  background: var(--brand);
+  background: var(--progress-color);
   border-radius: 3px;
-  transition: width 0.3s;
+  transition:
+    width 0.3s,
+    background-color 0.3s;
 }

@@ -1,7 +1,8 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/Button/Button';
 import { ProgressSlider } from '@/components/ui/ProgressSlider/ProgressSlider';
 import type { ParentTaskNode } from '@/domain/task.types';
+import { formatShortDate } from '@/utils/date';
 import type { EditTarget, TaskFormSubmit, TaskKind } from './taskForm.types';
 import { TaskTypeToggle } from './TaskTypeToggle';
 import { useTaskForm } from './useTaskForm';
@@ -22,10 +23,10 @@ function submitLabel(isEditing: boolean, kind: TaskKind): string {
 }
 
 export function TaskForm({ parents, editTarget, onSubmit, onCancelEdit }: Props) {
-  const parentIds = useMemo(() => parents.map((parent) => parent.id), [parents]);
-  const form = useTaskForm(editTarget, parentIds);
+  const form = useTaskForm(editTarget, parents);
   const [isSaving, setIsSaving] = useState(false);
   const isEditing = editTarget !== null;
+  const isChild = form.kind === 'child';
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -48,7 +49,7 @@ export function TaskForm({ parents, editTarget, onSubmit, onCancelEdit }: Props)
         <TaskTypeToggle value={form.kind} onChange={form.setKind} canCreateChild={parents.length > 0} />
       )}
 
-      {form.kind === 'child' && !isEditing && (
+      {isChild && !isEditing && (
         <label className={styles.field}>
           Pertenece a
           <select id="task-parent" value={form.parentId} onChange={(event) => form.setParentId(event.target.value)}>
@@ -82,7 +83,33 @@ export function TaskForm({ parents, editTarget, onSubmit, onCancelEdit }: Props)
         />
       </label>
 
-      {form.kind === 'child' ? (
+      {isChild ? (
+        <label className={styles.field}>
+          Fecha final
+          <input
+            id="task-due-date"
+            type="date"
+            value={form.draft.dueDate}
+            min={form.selectedParent?.startDate}
+            onChange={(event) => form.updateField('dueDate', event.target.value)}
+          />
+          {form.selectedParent && (
+            <span className={styles.hint}>La tarea padre inicia el {formatShortDate(form.selectedParent.startDate)}.</span>
+          )}
+        </label>
+      ) : (
+        <label className={styles.field}>
+          Fecha de inicio
+          <input
+            id="task-start-date"
+            type="date"
+            value={form.draft.startDate}
+            onChange={(event) => form.updateField('startDate', event.target.value)}
+          />
+        </label>
+      )}
+
+      {isChild ? (
         <div className={styles.field}>
           Avance
           <ProgressSlider
@@ -94,8 +121,8 @@ export function TaskForm({ parents, editTarget, onSubmit, onCancelEdit }: Props)
         </div>
       ) : (
         <p className={styles.note}>
-          El avance de la tarea padre es el promedio de sus tareas hijas. Las fechas se registran solas: una tarea
-          empieza al crearse y termina cuando llega al 100 %.
+          El avance de la tarea padre es el promedio de sus tareas hijas. Una hija se cumple si llega al 100 % a más
+          tardar en su fecha final.
         </p>
       )}
 

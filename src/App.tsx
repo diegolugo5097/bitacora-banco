@@ -49,11 +49,11 @@ export default function App() {
     return run(() => tasks.createChild(parentId, draft), 'Tarea hija agregada');
   };
 
-  /** SheetJS se descarga solo la primera vez que alguien exporta. */
+  /** La librería de Excel se descarga solo la primera vez que alguien exporta. */
   async function exportToExcel() {
     try {
       const { exportProgressReport } = await import('@/services/excelExport');
-      exportProgressReport(tasks.tree);
+      await exportProgressReport(tasks.tree);
     } catch {
       showToast('No se pudo generar el Excel. Intenta de nuevo.');
     }
@@ -122,6 +122,12 @@ export default function App() {
           onDeleteChild={(id) => run(() => tasks.deleteChild(id), 'Tarea hija eliminada')}
           onChildProgressChange={(id, progress) =>
             tasks.updateChildProgress(id, progress).catch(() => showToast('No se pudo guardar el avance.'))
+          }
+          onChildJustificationChange={(id, text) =>
+            tasks
+              .updateChildJustification(id, text)
+              .then(() => showToast('Justificación guardada'))
+              .catch(() => showToast('No se pudo guardar la justificación.'))
           }
         />
       </div>

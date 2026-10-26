@@ -1,3 +1,4 @@
+import { progressStyle } from '@/utils/progressColor';
 import styles from './ProgressSlider.module.css';
 
 interface Props {
@@ -11,7 +12,7 @@ const STEP = 5;
 
 export function ProgressSlider({ id, value, label, onChange }: Props) {
   return (
-    <span className={styles.slider}>
+    <span className={`${styles.slider} progress-tone`} style={progressStyle(value)}>
       <input
         id={id}
         type="range"

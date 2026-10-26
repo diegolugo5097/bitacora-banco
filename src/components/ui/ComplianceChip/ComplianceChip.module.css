@@ -1,0 +1,25 @@
+.chip {
+  padding: 3px 10px;
+  font: 700 11px var(--font-body);
+  white-space: nowrap;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-pill);
+}
+
+.met {
+  color: var(--ok);
+}
+
+.unmet {
+  color: var(--bad);
+  background: var(--bad-soft);
+}
+
+.onTrack {
+  color: var(--muted);
+}
+
+.noDueDate {
+  color: var(--idle);
+  border-style: dashed;
+}
